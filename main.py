@@ -1,9 +1,10 @@
-# main.py
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
+from sqlalchemy.orm import Session
 from datetime import timedelta
 import os
+
 from auth import (
     verify_password, 
     get_password_hash, 
@@ -11,6 +12,11 @@ from auth import (
     verify_token,
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
+from database import engine, get_db
+from models import Base, User
+
+# Create database tables on startup
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
@@ -38,25 +44,35 @@ class Token(BaseModel):
     access_token: str
     token_type: str
 
-# Temporary in-memory storage (replace with database later)
-fake_users_db = {}
+class UserResponse(BaseModel):
+    id: int
+    email: str
+    name: str
+    
+    class Config:
+        from_attributes = True
 
 @app.post("/api/auth/register", response_model=Token)
-async def register(user: UserRegister):
+async def register(user: UserRegister, db: Session = Depends(get_db)):
     # Check if user already exists
-    if user.email in fake_users_db:
+    db_user = db.query(User).filter(User.email == user.email).first()
+    if db_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
     
-    # Hash password and store user
+    # Hash password and create user
     hashed_password = get_password_hash(user.password)
-    fake_users_db[user.email] = {
-        "email": user.email,
-        "name": user.name,
-        "hashed_password": hashed_password
-    }
+    new_user = User(
+        email=user.email,
+        name=user.name,
+        hashed_password=hashed_password
+    )
+    
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
     
     # Create access token
     access_token = create_access_token(
@@ -67,10 +83,10 @@ async def register(user: UserRegister):
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.post("/api/auth/login", response_model=Token)
-async def login(user: UserLogin):
+async def login(user: UserLogin, db: Session = Depends(get_db)):
     # Check if user exists
-    db_user = fake_users_db.get(user.email)
-    if not db_user or not verify_password(user.password, db_user["hashed_password"]):
+    db_user = db.query(User).filter(User.email == user.email).first()
+    if not db_user or not verify_password(user.password, db_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password"
@@ -84,17 +100,15 @@ async def login(user: UserLogin):
     
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.get("/api/auth/me")
-async def get_current_user(token_data: dict = Depends(verify_token)):
+@app.get("/api/auth/me", response_model=UserResponse)
+async def get_current_user(token_data: dict = Depends(verify_token), db: Session = Depends(get_db)):
     email = token_data.get("sub")
-    user = fake_users_db.get(email)
+    user = db.query(User).filter(User.email == email).first()
+    
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    return {
-        "email": user["email"],
-        "name": user["name"]
-    }
+    return user
 
 # Protected route example
 @app.get("/api/protected")

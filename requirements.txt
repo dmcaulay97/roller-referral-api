@@ -6,3 +6,6 @@ bcrypt==4.0.1
 python-multipart
 pydantic[email]
 email-validator
+sqlalchemy
+psycopg2-binary
+alembic
