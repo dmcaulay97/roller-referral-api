@@ -1,0 +1,1 @@
+Use `python -m uvicorn main:app --reload` to run the app locally.
