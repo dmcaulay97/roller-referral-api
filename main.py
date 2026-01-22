@@ -34,7 +34,7 @@ app.add_middleware(
 class UserRegister(BaseModel):
     email: EmailStr
     password: str
-    name: str
+    user_name: str
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -47,7 +47,7 @@ class Token(BaseModel):
 class UserResponse(BaseModel):
     id: int
     email: str
-    name: str
+    user_name: str
     
     class Config:
         from_attributes = True
@@ -66,7 +66,7 @@ async def register(user: UserRegister, db: Session = Depends(get_db)):
     hashed_password = get_password_hash(user.password)
     new_user = User(
         email=user.email,
-        name=user.name,
+        user_name=user.user_name,
         hashed_password=hashed_password
     )
     

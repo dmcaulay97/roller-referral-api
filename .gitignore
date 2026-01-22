@@ -24,3 +24,6 @@ htmlcov/
 
 # Editor / OS junk
 .vs
+
+# db files
+.db
