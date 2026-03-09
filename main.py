@@ -5,7 +5,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from dotenv import load_dotenv
 from routes import auth
-from models import User
+from db.models import User
 import os
 
 load_dotenv()

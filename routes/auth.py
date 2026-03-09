@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from db.database import get_db
-from models import User
+from db.models import User
 from services.auth import verify_password, get_password_hash, create_access_token, verify_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from schemas.auth import UserRegister, UserLogin, Token, UserResponse
 
@@ -15,7 +15,7 @@ async def register(user: UserRegister, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
     
     hashed_password = get_password_hash(user.password)
-    new_user = User(email=user.email, user_name=user.user_name, hashed_password=hashed_password)
+    new_user = User(email=user.email, hashed_password=hashed_password)
     
     db.add(new_user)
     db.commit()
