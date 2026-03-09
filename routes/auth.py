@@ -22,7 +22,7 @@ async def register(user: UserRegister, db: Session = Depends(get_db)):
     db.refresh(new_user)
     
     access_token = create_access_token(
-        data={"sub": user.email},
+        data={"sub": new_user.email, "id": new_user.id},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     return {"access_token": access_token, "token_type": "bearer"}
@@ -35,7 +35,7 @@ async def login(user: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
     
     access_token = create_access_token(
-        data={"sub": user.email},
+        data={"sub": db_user.email, "id": db_user.id},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     return {"access_token": access_token, "token_type": "bearer"}
@@ -43,8 +43,7 @@ async def login(user: UserLogin, db: Session = Depends(get_db)):
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user(token_data: dict = Depends(verify_token), db: Session = Depends(get_db)):
-    email = token_data.get("sub")
-    user = db.query(User).filter(User.email == email).first()
+    user = db.query(User).filter(User.email == token_data["email"]).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user

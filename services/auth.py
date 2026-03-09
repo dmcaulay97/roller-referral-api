@@ -6,6 +6,9 @@ from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import os
+from db.database import get_db
+from db.models import User
+from sqlalchemy.orm import Session
 
 # Secret key for JWT (set this in Railway environment variables)
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-this-in-production")
@@ -31,19 +34,15 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
-        if email is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Could not validate credentials"
-            )
-        return payload
+        user_id: int = payload.get("id")
+        if email is None or user_id is None:
+            raise HTTPException(status_code=401, detail="Could not validate credentials")
+        return {"id": user_id, "email": email}
     except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials"
-        )
+        raise HTTPException(status_code=401, detail="Could not validate credentials")

@@ -9,3 +9,4 @@ email-validator
 sqlalchemy
 psycopg2-binary
 alembic
+cryptography
